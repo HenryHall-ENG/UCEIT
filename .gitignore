@@ -54,4 +54,4 @@ dkms.conf
 # STM32CubeIDE
 .metadata/
 .settings/
-*.ld
+*.Id
