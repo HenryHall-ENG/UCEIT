@@ -19,7 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
@@ -43,7 +42,6 @@ typedef struct  {
 	uint16_t gain;
 	uint16_t* buff;
 	uint16_t index;
-	bool is_done;
 } ADC_t;
 
 
@@ -59,8 +57,31 @@ typedef struct  {
 typedef struct {
 	uint8_t index;
 	bool is_ready;
+	uint8_t quadrant;
 	ADC_t* adc[];
 } Channel_t;
+
+
+typedef enum {
+    E_1_2 = 0,
+    E_2_3 = 1,
+    E_3_4 = 2,
+    E_4_5 = 3,
+    E_5_6 = 4,
+    E_6_7 = 5,
+    E_7_8 = 6,
+    E_8_9 = 7,
+    E_9_10 = 8,
+    E_10_11 = 9,
+    E_11_12 = 10,
+    E_12_13 = 11,
+    E_13_14 = 12,
+    E_14_15 = 13,
+    E_15_16 = 14,
+    E_16_1 = 15,
+	NUM_ELECTRODE_PAIRS
+} Current_t;
+
 
 /* USER CODE END PTD */
 
@@ -69,6 +90,17 @@ typedef struct {
 #define ADC_SIZE 256 //The size of the adc buffer that values are read into
 #define VOLTAGE_MUX 4 //The number of multiplexing combinations per adc
 
+#define FREQ_CURRENT 1000
+
+#define LUT_SIZE 256
+
+#define TIMER2_PRESCALAR 1
+#define TIMER2_FREQ 5e6
+#define USB_PAYLOAD 32
+
+#define DAC_FREQ 1e6
+#define MAIN_FREQ 1
+#define USB_FREQ 1e3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -86,6 +118,7 @@ ADC_HandleTypeDef hadc5;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 PCD_HandleTypeDef hpcd_USB_FS;
 
@@ -104,19 +137,25 @@ static void MX_ADC5_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 ADC_t* init_adc(void);
 void free_adc(ADC_t* adc);
+void free_channel(Channel_t* channel)
 
 void set_gain(ADC_t* adc, uint16_t gain);
 void write_to_adc(Channel_t* channel, uint32_t adc_value, bool is_all_finished);
 
-void init_channel(Channel_t* channel);
+void init_channel(Channel_t* channel, uint8_t quadrant);
 void set_mux(uint8_t index);
 
 bool send_adc_buffer(Channel_t* channel);
 
+void write_dac(uint16_t value);
+void init_lut(void);
+
+void updateCurrent(Current_t electrodes);
 
 
 /* USER CODE END PFP */
@@ -127,6 +166,14 @@ Channel_t channel1;
 Channel_t channel2;
 Channel_t channel3;
 Channel_t channel4;
+uint16_t sinewave[LUT_SIZE];
+uint32_t sine_idx;
+bool all_readings_done = false;
+
+uint64_t gl_ticks = 0;
+bool is_main = 0;
+bool is_dac = 0;
+bool is_usb = 0;
 
 /* USER CODE END 0 */
 
@@ -167,6 +214,7 @@ int main(void)
   MX_SPI1_Init();
   MX_USB_PCD_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)
@@ -191,21 +239,44 @@ int main(void)
   if (HAL_ADC_Start_IT(&hadc5) != HAL_OK)
   	  Error_Handler();
 
+  uint32_t period = (uint32_t)(CLKFREQ / (TIMER2_PRESCALAR * TIMER2_FREQ) - 1);
+  TIM2->ARR = period;
+  TIM2->PSC = TIMER2_PRESCALAR;
+
+
+
 
   if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1) != HAL_OK)
 	  Error_Handler();
+  if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
+  	  Error_Handler();
 
 
-  init_channel(&channel1);
-  init_channel(&channel2);
-  init_channel(&channel3);
-  init_channel(&channel4);
+  init_channel(&channel1, 1);
+  init_channel(&channel2, 2);
+  init_channel(&channel3, 3);
+  init_channel(&channel4, 4);
+  init_lut();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if (is_main) {
+
+		  is_main = 0;
+	  }
+	  if (is_dac) {
+		write_dac(sinewave[sine_idx]);
+		sine_idx++;
+		is_dac = 0;
+	  }
+	  if (is_usb) {
+
+		  is_usb = 0;
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -685,6 +756,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 96;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 100000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USB Initialization Function
   * @param None
   * @retval None
@@ -737,8 +853,9 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10
-                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13
+                          |GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2
@@ -754,16 +871,12 @@ static void MX_GPIO_Init(void)
                           |GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15
                           |GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PE2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PE3 PE4 PE5 PE10
-                           PE11 PE12 PE13 PE15 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10
-                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_15;
+  /*Configure GPIO pins : PE2 PE3 PE4 PE5
+                           PE10 PE11 PE12 PE13
+                           PE15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
+                          |GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -820,6 +933,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+//---------- ADC Callback ----------
+/*
+ * Reads all ADC values into the appropriate channel
+ * Struct. Passes if all channels have filled there
+ * buffers.
+ *
+ * Args:
+ * 		hadc: handle type for the adc, defines which
+ * 			adc is being used
+ */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	bool is_all_finished = (!channel1.is_ready && !channel2.is_ready && !channel3.is_ready && !channel4.is_ready);
@@ -843,15 +966,52 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (hadc->Instance == ADC5) {
     	uint32_t adc5_val = HAL_ADC_GetValue(hadc);
     }
+}
+
+//---------- DAC Callback ----------
+/*
+ * Calls when the timer reaches its set period.
+ * Will write a new value to the DAC port according
+ * to a sinewave LUT.
+ *
+ * Args:
+ * 		htim: handle type for the timer to define
+ * 			which timer has triggered the callback.
+ */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	if (htim->Instance == TIM2) {
+		gl_ticks++;
+	    if (gl_ticks % (TIMER2_FREQ / MAIN_FREQ) == 1) {
+			is_main = 1; //1Hz
+		}
+	    if (gl_ticks % (TIMER2_FREQ / DAC_FREQ) == 1) {
+			is_dac = 1; //1Hz
+		}
+	    if (gl_ticks % (TIMER2_FREQ / USB_FREQ) == 1) {
+	    	is_usb = 1;
+	    }
+
+
+        if (gl_ticks >= TIMER2_FREQ) {
+            gl_ticks = 0;
+        }
+	}
 
 }
 
 
+//---------- ADC init ----------
+/*
+ * Sets default values for the struct and
+ * dynamically allocates memory for the buffer.
+ *
+ *
+ */
 ADC_t* init_adc(void) {
 	ADC_t* adc;
 	adc->gain = 0;
 	adc->index = 0;
-	adc->is_done = false;
 	adc->buff = (uint16_t*)malloc(ADC_SIZE * sizeof(uint16_t));
 	for (size_t i = 0; i < ADC_SIZE; i++) {
 		adc->buff[i] = 0;
@@ -859,6 +1019,15 @@ ADC_t* init_adc(void) {
 	return adc;
 }
 
+//---------- ADC memory deallocate----------
+/*
+ * Frees all dynamically allocated memory used
+ * in an ADC struct.
+ *
+ * Args:
+ * 		adc: A pointer to the ADC that is being
+ * 			reset.
+ */
 void free_adc(ADC_t* adc) {
 	if (adc != NULL) {
 		free(adc->buff);  // Free the buffer memory
@@ -866,46 +1035,117 @@ void free_adc(ADC_t* adc) {
 	}
 }
 
+
+//---------- Channel memory deallocate ----------
+/*
+ * Frees all dynamic memory used in a channel struct.
+ *
+ * Args:
+ * 		channel: A pointer to the channel that
+ * 			is being reset.
+ */
+void free_channel(Channel_t* channel) {
+	for (size_t i = 0; i < VOLTAGE_MUX; i++) {
+		free_adc(channel->adc[i]);
+	}
+}
+
+//---------- Sets adc gain ----------
+/*
+ * Sets the gain in an adc struct and writes
+ * the gain to the PGA via GPIO pins.
+ *
+ * Args:
+ * 		adc: ADC struct that is being set.
+ * 		gain: the PGA gain that is being currently set.
+ */
 void set_gain(ADC_t* adc, uint16_t gain) {
 	adc->gain=gain;
 }
 
-
+//---------- ADC Sampling----------
+/*
+ * Reads a value into the current adc struct buffer.
+ * If the buffer is full it is sent via USB to a host
+ * PC. This turns the channel status to not ready. When all
+ * channels are not ready it will change the adc index and update
+ * the mux pins.
+ *
+ * Args:
+ * 		channel: The current channel that is being written to.
+ * 		adc_value: The value from reading the ADC unit on the
+ * 			stm32.
+* 		is_all_finished: Is true if all channels have fulled
+* 			their respective buffers. Triggers a mux change and
+* 			updates the adc being written to.
+ */
 void write_to_adc(Channel_t *channel, uint32_t adc_value, bool is_all_finished) {
 	ADC_t* adc = channel->adc[channel->index];
 	if (channel->is_ready) {
 		if (adc->index >= ADC_SIZE) {
 			channel->is_ready = false;
 			adc->index = 0;
-			adc->is_done = send_adc_buffer(channel);
 		} else {
 			adc->buff[adc->index] = adc_value;
 			adc->index++;
 		}
 	}
-	if (is_all_finished && adc->is_done) {
-		adc->is_done = false;
-		channel->index++;
-		set_mux(channel->index);
+	if (is_all_finished) {
 		channel->is_ready = true;
+		channel->index++;
+		set_mux(channel->index); //This will get called four times by the different channels, an issue?
 	}
 }
 
-
+//----------Buffer Send ----------
+/*
+ * Sends the currently active buffer in the channel struct
+ * to a host PC.
+ *
+ * Args:
+ * 		channel: the channel with a full buffer
+ * 			that needs to be sent.
+ */
 bool send_adc_buffer(Channel_t* channel) {
 
-	//sends adc buffer by usb todo
+	char buffer[USB_PAYLOAD + 1];
+	size_t pos = 0;
+	for (size_t i = 0; i < ADC_SIZE; i++) {
+		uint16_t value = channel->adc[channel->index]->buff[i];
+		snprintf (buffer, sizeof (buffer), "Q%u I%u %u\n",channel->quadrant, channel->index, value);
+		USB_Send(buffer);
+	}
 	return true;
 }
 
-void init_channel(Channel_t *channel) {
+//---------- Channel Initialise----------
+/*
+ * Initialises to default values in the channel struct.
+ * Also initialises all adc structs used in the channel.
+ *
+ * Args:
+ * 		channel: the channel that is being initialised.
+ */
+void init_channel(Channel_t *channel, uint8_t quadrant) {
 	channel->index = 0;
 	channel->is_ready = true;
+	channel->quadrant=quadrant;
 	for (size_t i = 0; i < VOLTAGE_MUX; i++) {
 		channel->adc[i] = init_adc();
 	}
 }
 
+
+//---------- Voltage MUX ----------
+/*
+ * Sets the voltage multiplexers to one of four possible
+ * combinations. This gives 16 different adc readings each
+ * between 2 electrodes.
+ *
+ * Args:
+ * 		index: The configuration that is being set, only four
+ * 			combinations exist to get all readings.
+ */
 void set_mux(uint8_t index) {
 	switch (index) {
 		case 0:
@@ -925,10 +1165,131 @@ void set_mux(uint8_t index) {
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
 			break;
 		default:
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET); //display error light
+			Error_Handler();
 	}
 }
 
+
+//---------- DAC write ----------
+/*
+ * Writes a 14 bit binary value to the parallel interface
+ * on the external DAC. This is used to generate a sinewave.
+ *
+ * Args:
+ * 		value: The number that is being written
+ * 			to the DAC
+ */
+void write_dac(uint16_t value){
+	sine_idx = 0;
+	if (value >= 16384) {
+		value = 16384;
+	}
+	GPIOC->ODR = value;
+}
+
+
+//---------- LUT setup ----------
+/*
+ * Sets up a look up table of a sinewave with a DC offset
+ * and a max 14 bit amplitude. THe frequency is adjusted according
+ * to the update rate of the DAC.
+ *
+ */
+void init_lut(void) {
+	uint32_t amplitude = 8192;
+	for (int i = 0; i < LUT_SIZE; i++) {
+		uint32_t new_freq = FREQ_CURRENT / (DAC_FREQ / LUT_SIZE);
+		uint16_t sine = sin((i * 2.0 * M_PI * new_freq) / LUT_SIZE);
+		sinewave[i] = (uint16_t)(amplitude * sine + amplitude);
+	}
+}
+
+
+
+//---------- USB send string ----------
+/*
+ * Sends a string to the USB com port on a host PC.
+ *
+ * Args:
+ * 		message: the string that is being sent
+ */
+void USB_Send(char* message) {
+	CDC_Transmit_FS((uint8_t*)message, strlen(message));
+}
+
+
+
+void updateCurrent(Current_t electrodes) {
+	switch (currentPair) {//must be a better way to do this, kinda sucks
+		case E_1_2: //IN = 0001 IP = 0000
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN5, GPIO_PIN_SET);
+			break;
+		case E_2_3: //IN = 0010 IP = 0001
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN5|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN4|GPIO_PIN13, GPIO_PIN_SET);
+			break;
+		case E_3_4: //IN = 0011 IP = 0010
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN4|GPIO_PIN5|GPIO_PIN12, GPIO_PIN_SET);
+			break;
+		case E_4_5: //IN = 0100 IP = 0011
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN5|GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
+			break;
+		case E_5_6: //IN = 0101 IP = 0100
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_11 , GPIO_PIN_SET);
+			break;
+		case E_6_7: //IN = 0110 IP = 0101
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN5|GPIO_PIN_10|GPIO_PIN_12, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_11|GPIO_PIN_13 , GPIO_PIN_SET);
+			break;
+		case E_7_8: //IN = 0111 IP = 0110
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_10|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_SET);
+			break;
+		case E_8_9: //IN = 1000 IP = 0111
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN5|GPIO_PIN_10, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
+			break;
+		case E_9_10: //IN = 1001 IP = 1000
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_5|GPIO_PIN_10, GPIO_PIN_SET);
+			break;
+		case E_10_11: //IN = 1010 IP = 1001
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN5|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_13 , GPIO_PIN_SET);
+			break;
+		case E_11_12: //IN = 1011 IP = 1010
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_12, GPIO_PIN_SET);
+			break;
+		case E_12_13: //IN = 1100 IP = 1011
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN5|GPIO_PIN_11, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_10|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
+			break;
+		case E_13_14: //IN = 1101 IP = 1100
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11 , GPIO_PIN_SET);
+			break;
+		case E_14_15: //IN = 1110 IP = 1101
+			HAL_GPIO_WritePin(GPIOE, PIO_PIN5|GPIO_PIN_12, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_SET);
+			break;
+		case E_15_16: //IN = 1111 IP = 1110
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN5|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_SET);
+			break;
+		case E_16_1: //IN = 0000 IP = 1111
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN5, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
+			break;
+		default:
+			Error_Handler();
+
+			break;
+}
 /* USER CODE END 4 */
 
 /**
