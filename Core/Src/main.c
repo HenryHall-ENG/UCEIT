@@ -83,6 +83,8 @@ typedef struct {
 #define DAC_FREQ 1e6
 #define MAIN_FREQ 1
 #define USB_FREQ 1e3
+#define VOLTAGE_FREQ 1e3
+#define CURRENT_FREQ 1e2
 #define CLKFREQ 96e6
 /* USER CODE END PD */
 
@@ -117,6 +119,7 @@ void USB_Send(char* message);
 uint16_t sinewave[LUT_SIZE];
 uint32_t sine_idx;
 bool all_readings_done = false;
+uint8_t current_mux = 0;
 
 buffers_t* buffers;
 
@@ -124,6 +127,8 @@ uint64_t gl_ticks = 0;
 bool is_main = 0;
 bool is_dac = 0;
 bool is_usb = 0;
+bool is_voltage_mux = 0;
+bool is_current_mux = 0;
 
 /* USER CODE END 0 */
 
@@ -207,7 +212,6 @@ int main(void)
   while (1)
   {
 	  if (is_main) {
-
 		  is_main = 0;
 	  }
 	  if (is_dac) {
@@ -218,6 +222,22 @@ int main(void)
 	  if (is_usb) {
 		  send_all_buffer(buffers);
 		  is_usb = 0;
+	  }
+	  if (is_voltage_mux) {
+		  buffer->mux++;
+		  if (buffer->mux > 4) {
+			  buffer->mux = 0;
+		  }
+		  set_mux(buffer->mux);
+		  is_voltage_mux = 0;
+	  }
+	  if (is_current_mux) {
+		  current_mux++;
+		  if (current_mux > 16) {
+			  current_mux = 0;
+		  }
+		  updateCurrent(current_mux);
+		  is_current_mux = 0;
 	  }
 
     /* USER CODE END WHILE */
@@ -333,6 +353,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / USB_FREQ) == 1) {
 	    	is_usb = 1;
 	    }
+	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / VOLTAGE_FREQ) == 1) {
+	    	is_voltage_mux = 1;
+	    }
+	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / CURRENT_FREQ) == 1) {
+	    	is_current_mux = 1;
+	    }
         if (gl_ticks >= TIMER2_FREQ) {
             gl_ticks = 0;
         }
@@ -362,7 +388,7 @@ void send_adc_buffer(int32_t *array, size_t size, uint8_t mux, uint8_t adc) {
 	char buffer[USB_PAYLOAD + 1];
 	for (size_t i = 0; i < size; i++) {
 		uint16_t value = array[i];
-		snprintf (buffer, sizeof (buffer), "A%uM%u %u\n",adc, mux, value);
+		snprintf (buffer, sizeof (buffer), "A%uV%uC%u %u\n", adc, mux, current_mux, value);
 		USB_Send(buffer);
 	}
 }
