@@ -2,8 +2,6 @@ clear all;
 clc;
 close all;
 
-global dataStore;
-
 COM = 'COM3';
 BAUD = 9600;
 NUM_MEASUREMENTS = 256;
@@ -56,6 +54,8 @@ while true
     end    
 end
 
+stop(t);    
+delete(t);
 
 function reconCallback(~, ~)
     if length(dataStore) == NUM_MEASUREMENTS

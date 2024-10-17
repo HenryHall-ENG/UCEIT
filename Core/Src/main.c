@@ -111,6 +111,7 @@ void init_lut(void);
 void updateCurrent(Electrode_t electrodes);
 void init_all_buffers(buffers_t* buff);
 void USB_Send(char* message);
+void WriteBits(GPIO_TypeDef* GPIOx, uint16_t pinMask, uint8_t value);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -224,16 +225,16 @@ int main(void)
 		  is_usb = 0;
 	  }
 	  if (is_voltage_mux) {
-		  buffer->mux++;
-		  if (buffer->mux > 4) {
-			  buffer->mux = 0;
+		  buffers->mux++;
+		  if (buffers->mux > 3) {
+			  buffers->mux = 0;
 		  }
-		  set_mux(buffer->mux);
+		  set_mux(buffers->mux);
 		  is_voltage_mux = 0;
 	  }
 	  if (is_current_mux) {
 		  current_mux++;
-		  if (current_mux > 16) {
+		  if (current_mux > 15) {
 			  current_mux = 0;
 		  }
 		  updateCurrent(current_mux);
@@ -419,26 +420,8 @@ void send_all_buffer(buffers_t* buff) {
  * 			combinations exist to get all readings.
  */
 void set_mux(uint8_t index) {
-	switch (index) {
-		case 0:
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
-			break;
-		case 1:
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
-			break;
-		case 2:
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
-			break;
-		case 3:
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_SET);
-			break;
-		default:
-			Error_Handler();
-	}
+	uint16_t mask = 0xC000; //1100 0000 0000 0000
+	WriteBits(GPIOE, mask, index);
 }
 
 
@@ -490,79 +473,23 @@ void USB_Send(char* message) {
 }
 
 
+void WriteBits(GPIO_TypeDef* GPIOx, uint16_t pinMask, uint8_t value) {
+    // Clear the bits at the positions of pinMask
+    GPIOx->ODR &= ~pinMask;
+
+    // Set the new value at the positions of pinMask
+    GPIOx->ODR |= (value & 0x0F) << __builtin_ctz(pinMask);
+}
 
 void updateCurrent(Electrode_t electrodes) {
-	switch (electrodes) {//must be a better way to do this, kinda sucks
-		case E_1_2: //IN = 0001 IP = 0000
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5, GPIO_PIN_SET);
-			break;
-		case E_2_3: //IN = 0010 IP = 0001
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		case E_3_4: //IN = 0011 IP = 0010
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_12, GPIO_PIN_SET);
-			break;
-		case E_4_5: //IN = 0100 IP = 0011
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		case E_5_6: //IN = 0101 IP = 0100
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_11 , GPIO_PIN_SET);
-			break;
-		case E_6_7: //IN = 0110 IP = 0101
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_12, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_11|GPIO_PIN_13 , GPIO_PIN_SET);
-			break;
-		case E_7_8: //IN = 0111 IP = 0110
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_10|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_SET);
-			break;
-		case E_8_9: //IN = 1000 IP = 0111
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		case E_9_10: //IN = 1001 IP = 1000
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_5|GPIO_PIN_10, GPIO_PIN_SET);
-			break;
-		case E_10_11: //IN = 1010 IP = 1001
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_13 , GPIO_PIN_SET);
-			break;
-		case E_11_12: //IN = 1011 IP = 1010
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_12, GPIO_PIN_SET);
-			break;
-		case E_12_13: //IN = 1100 IP = 1011
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_11, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_10|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		case E_13_14: //IN = 1101 IP = 1100
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11 , GPIO_PIN_SET);
-			break;
-		case E_14_15: //IN = 1110 IP = 1101
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5|GPIO_PIN_12, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		case E_15_16: //IN = 1111 IP = 1110
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_SET);
-			break;
-		case E_16_1: //IN = 0000 IP = 1111
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5, GPIO_PIN_RESET);
-			HAL_GPIO_WritePin(GPIOE, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_SET);
-			break;
-		default:
-			Error_Handler();
-
-			break;
-	}
+	uint16_t maskP = 0x003C; //0000 0000 0011 1100
+	uint16_t maskN = 0x3C00; //0011 1100 0000 0000
+	uint8_t pinsP = (uint8_t)electrodes; //1,2
+	uint8_t pinsN = pinsP < 15 ? pinsP + 1 : 0;
+	WriteBits(GPIOE, maskP, pinsP);
+	WriteBits(GPIOE, maskN, pinsN);
 }
+
 /* USER CODE END 4 */
 
 /**
