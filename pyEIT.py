@@ -14,7 +14,7 @@ import time
 
 fs = 1e6
 f_excitation = 1e3
-PORT = 'COM6'
+PORT = 'COM12'
 BAUD = 9600
 
 def init_fem(r,h0,n_el):
@@ -81,16 +81,18 @@ def proccess_data(raw_data, data_dict):
     C = int(raw_data.group(3))
     adc_value = int(raw_data.group(4))
 
-    firstElec = 4*(A-1) + V
-    secondElec = firstElec + 1 if firstElec < 16 else 1
-    firstStim = C+1
-    secondStim = firstStim + 1 if firstStim < 16 else 1
+    if (A<5):
+        firstElec = 4*(A-1) + V
+        secondElec = firstElec + 1 if firstElec < 16 else 1
+        firstStim = C+1
+        secondStim = firstStim + 1 if firstStim < 16 else 1
 
-    ID = f'V{firstElec}:{secondElec}|C{firstStim}:{secondStim}'
-    if ID not in data_dict:
-        data_dict[ID] = [adc_value]
-    else:
-        data_dict[ID].append(adc_value)
+        ID = f'V{firstElec}:{secondElec}|C{firstStim}:{secondStim}'
+        if ID not in data_dict:
+            data_dict[ID] = [adc_value]
+        else:
+            data_dict[ID].append(adc_value)
+    # print(len(data_dict), min_length(data_dict))
     return data_dict
 
 def key2elec(key):
@@ -99,7 +101,7 @@ def key2elec(key):
     C = c_part.split(':')
     V[0] = V[0].replace('V', '')
     C[0] = C[0].replace('C', '')
-    return int(V),int(C)
+    return (V,C)
 
 def min_length(data_dict):
     lengths = [len(value) for value in data_dict.values()]
@@ -108,7 +110,7 @@ def min_length(data_dict):
 def custom_sort_key(item):
     key = item[0]  
     C,V = key2elec(key)
-    return (V[0], C[0])
+    return (int(V[0]), int(C[0]))
     
 def find_amp(data):
     data_np = np.array(data)
@@ -129,33 +131,68 @@ def calc_magnitude(data_dict):
             magnitude.append(find_amp(values))
     return magnitude
 
+def displayMeasurements( mag, fig,axes):
+    axes.cla()
+    axes.grid(True)
+    axes.plot(range(len(mag), mag))
+    plt.show()
+
+def displayRawData(fig, axes,data_dictionary):
+    i = 0
+    items = sorted(data_dictionary.items(), key=custom_sort_key)
+    for row in axes:
+        for col in row:
+            col.cla()
+            ids,instance = items[i]
+            i +=1 
+            col.plot(range(len(instance)), instance)
+            col.set_title(ids)
+            print('t')
+            
+        
 
 def main():
     ser = serial.Serial(PORT, BAUD)
-    EIT = initEIT(0.1,0.01,16)
-
+    # EIT = initEIT(0.1,0.01,16)
+    print(ser)
     data_dictionary = {}
     magNew = []
     magOld = []
-
+    read_serial(ser)
     ds = 0
-    fig, axes = plt.subplots(1)
+    fig, axes = plt.subplots(4,4)
+    fig.tight_layout()
 
-    ani = Anim.FuncAnimation(fig=fig, func=update, fargs=(DS,fig,axes,),frames=40, interval=40)
-
-    while True: 
-        time.sleep(0.01)
+    # ani = Anim.FuncAnimation(fig=fig, func=update, fargs=(DS,fig,axes,),frames=40, interval=40)
+    # ani = Anim.FuncAnimation(fig=fig, func=update, fargs=(data_dictionary, fig, axes,),frames=40, interval=40)
+    is_running = True
+    while is_running: 
         raw_data = read_serial(ser)
         data_dictionary=proccess_data(raw_data, data_dictionary)
-        if len(data_dictionary) > 256:
-            if min_length(data_dictionary) > 100:
-                magOld = magNew
-                magNew = calc_magnitude(data_dictionary)
-                data_dictionary = {}
-                if len(magOld) > 0:
-                    DS = inverse(EIT,magOld,magNew)
+        print(len(data_dictionary))
+        if len(data_dictionary) > 15:
+            if min_length(data_dictionary) > 200:
+                displayRawData(fig,axes,data_dictionary)
+                is_running = False
+    plt.show()
+            # if min_length(data_dictionary) > 20:
+    #         print('test')
+    #         magOld = magNew
+    #         magNew = calc_magnitude(data_dictionary)
+    #         displayMeasurements(magNew, fig,axes)
+    #         data_dictionary = {}
+    # #         if len(magOld) > 0:
+    #             # DS = inverse(EIT,magOld,magNew)
 
 
-def update(frame, ds, fig, axes):
-    displayEIT(ds, fig, axes)
+# def update(frame, ds, fig, axes):
+    # displayEIT(ds, fig, axes)
+
+def update(frame,data_dictionary,fig,axes):
+    # displayMeasurements( mag, fig,axes)
+    displayRawData(fig, axes, data_dictionary)
+
+
+
+main()
 
