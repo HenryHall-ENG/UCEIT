@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 import pyeit
 import pyeit.mesh as mesh
+from pyeit.mesh.shape import thorax
 import pyeit.eit.protocol as protocol
 from pyeit.eit.fem import EITForward
 from pyeit.eit.greit import GREIT
@@ -17,33 +18,30 @@ f_excitation = 1e3
 PORT = 'COM12'
 BAUD = 9600
 
-def init_fem(r,h0,n_el):
+def init_fem(r,perm,n_el):
     def _fd(pts):
         """shape function"""
         return pyeit.mesh.shape.circle(pts, pc=[0, 0], r=r)
     n_el = n_el  
+    h0 = r/10
     mesh_obj = mesh.create(n_el, fd=_fd, h0=h0)
-    
+    mesh_obj.perm=perm
     return mesh_obj
-    
+   
 def display_fem(mesh_obj):
     pts = mesh_obj.node
     tri = mesh_obj.element
     el_pos = mesh_obj.el_pos
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.triplot(pts[:, 0], pts[:, 1], tri, linewidth=1)
-    ax.plot(pts[el_pos, 0], pts[el_pos, 1], "ro")
-    plt.show()
+    return pts,tri,el_pos
+
+def display_forward(mesh_obj, protocol_obj):
+    fwd = EITForward(mesh_obj, protocol_obj)
+    v0 = fwd.solve_eit()
+    return v0
 
 def init_forward(mesh_obj, stimulation=1, measurement=1):
     protocol_obj = protocol.create(mesh_obj.n_el, dist_exc=stimulation, step_meas=measurement, parser_meas="std")
-
-    fwd = EITForward(mesh_obj, protocol_obj)
-    v0 = fwd.solve_eit()
-
-    plt.plot(np.arange(0,len(v0), 1), v0)
-    plt.show()
     return protocol_obj
 
 def init_inverse(mesh_obj, protocol_obj):
@@ -62,8 +60,8 @@ def displayEIT(ds, fig, axes):
     axes.axis("equal")
     fig.colorbar(im, ax=axes.ravel().tolist())
 
-def initEIT(r,h0,n_el):
-    mesh_obj=init_fem(r,h0.n_el)
+def initEIT(r,perm,n_el):
+    mesh_obj=init_fem(r,perm,n_el)
     protocol_obj=init_forward(mesh_obj)
     eit=init_inverse(mesh_obj,protocol_obj)
     return eit
@@ -73,7 +71,6 @@ def read_serial(ser):
     ser.flushInput()
     data = re.match(r'A(\d+)V(\d+)C(\d+)\s+(\d+)', line)
     return data
-
 
 def proccess_data(raw_data, data_dict):
     A = int(raw_data.group(1))
@@ -148,8 +145,6 @@ def displayRawData(fig, axes,data_dictionary):
             col.plot(range(len(instance)), instance)
             col.set_title(ids)
             print('t')
-            
-        
 
 def main():
     ser = serial.Serial(PORT, BAUD)
@@ -194,5 +189,5 @@ def update(frame,data_dictionary,fig,axes):
 
 
 
-main()
+# main()
 
