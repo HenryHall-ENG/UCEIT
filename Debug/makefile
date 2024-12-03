@@ -87,8 +87,8 @@ all: main-build
 main-build: UCEIT.elf secondary-outputs
 
 # Tool invocations
-UCEIT.elf UCEIT.map: $(OBJS) $(USER_OBJS) C:\Users\henri\OneDrive\ -\ University\ of\ Canterbury\University\Fourth\ Year\EIT\UCEIT\STM32G474VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "UCEIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\henri\OneDrive - University of Canterbury\University\Fourth Year\EIT\UCEIT\STM32G474VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UCEIT.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+UCEIT.elf UCEIT.map: $(OBJS) $(USER_OBJS) C:\Users\henri\OneDrive\Documents\EIT\git\UCEIT\STM32G474VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "UCEIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\henri\OneDrive\Documents\EIT\git\UCEIT\STM32G474VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UCEIT.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -32,17 +32,16 @@ def display_fem(mesh_obj):
     pts = mesh_obj.node
     tri = mesh_obj.element
     el_pos = mesh_obj.el_pos
-
     return pts,tri,el_pos
+
+def init_forward(mesh_obj, stimulation=1, measurement=1):
+    protocol_obj = protocol.create(mesh_obj.n_el, dist_exc=stimulation, step_meas=measurement, parser_meas="std")
+    return protocol_obj
 
 def display_forward(mesh_obj, protocol_obj):
     fwd = EITForward(mesh_obj, protocol_obj)
     v0 = fwd.solve_eit()
     return v0
-
-def init_forward(mesh_obj, stimulation=1, measurement=1):
-    protocol_obj = protocol.create(mesh_obj.n_el, dist_exc=stimulation, step_meas=measurement, parser_meas="std")
-    return protocol_obj
 
 def init_inverse(mesh_obj, protocol_obj):
     eit = GREIT(mesh_obj, protocol_obj)
@@ -186,8 +185,6 @@ def main():
 def update(frame,data_dictionary,fig,axes):
     # displayMeasurements( mag, fig,axes)
     displayRawData(fig, axes, data_dictionary)
-
-
 
 # main()
 

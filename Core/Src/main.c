@@ -27,6 +27,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dac.h"
 #include "hrtim.h"
 #include "tim.h"
 #include "usb_device.h"
@@ -66,7 +67,7 @@ typedef struct {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_SIZE 256 //Size of all ADC Buffers
+#define ADC_SIZE 32 //Size of all ADC Buffers
 #define LUT_SIZE 100 //Size of the stimulation Look Up Table
 #define USB_PAYLOAD 32 //Size of the USB Buffer
 
@@ -167,6 +168,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_HRTIM1_Init();
+  MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
 
   //---------- ADC Calibration ----------
@@ -197,9 +199,11 @@ int main(void)
   uint32_t period = (uint32_t)(CLKFREQ / (TIMER2_PRESCALAR * TIMER2_FREQ) - 1);
   TIM2->ARR = period;
   TIM2->PSC = TIMER2_PRESCALAR;
+//
+//  uint32_t updateFreq = (LUT_SIZE*DAC_FREQ);
+//  HRTIM1->sTimerxRegs[HRTIM_TIMERINDEX_TIMER_A].PERxR = HRTIM_MUL*(CLKFREQ/updateFreq);
 
-  uint32_t updateFreq = (LUT_SIZE*DAC_FREQ);
-  HRTIM1->sTimerxRegs[HRTIM_TIMERINDEX_TIMER_A].PERxR = HRTIM_MUL*(CLKFREQ/updateFreq);
+
 
   //---------- Buffer Initialisation ----------
   init_all_buffers(&buffers);
@@ -212,8 +216,8 @@ int main(void)
   if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
   	  Error_Handler();
 
-  if (HAL_HRTIM_SimpleBaseStart_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A) != HAL_OK)
-  	  Error_Handler();
+//  if (HAL_HRTIM_SimpleBaseStart_IT(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A) != HAL_OK)
+//  	  Error_Handler();
 
   HAL_Delay(400);
 
