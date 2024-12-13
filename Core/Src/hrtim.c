@@ -25,6 +25,7 @@
 /* USER CODE END 0 */
 
 HRTIM_HandleTypeDef hhrtim1;
+DMA_HandleTypeDef hdma_hrtim1_a;
 
 /* HRTIM1 init function */
 void MX_HRTIM1_Init(void)
@@ -34,9 +35,9 @@ void MX_HRTIM1_Init(void)
 
   /* USER CODE END HRTIM1_Init 0 */
 
+  HRTIM_ADCTriggerCfgTypeDef pADCTriggerCfg = {0};
   HRTIM_TimeBaseCfgTypeDef pTimeBaseCfg = {0};
   HRTIM_TimerCtlTypeDef pTimerCtl = {0};
-  HRTIM_TimerCfgTypeDef pTimerCfg = {0};
 
   /* USER CODE BEGIN HRTIM1_Init 1 */
 
@@ -56,7 +57,17 @@ void MX_HRTIM1_Init(void)
   {
     Error_Handler();
   }
-  pTimeBaseCfg.Period = 0xFFDF;
+  pADCTriggerCfg.UpdateSource = HRTIM_ADCTRIGGERUPDATE_TIMER_B;
+  pADCTriggerCfg.Trigger = HRTIM_ADCTRIGGEREVENT13_TIMERB_PERIOD;
+  if (HAL_HRTIM_ADCTriggerConfig(&hhrtim1, HRTIM_ADCTRIGGER_1, &pADCTriggerCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_HRTIM_ADCPostScalerConfig(&hhrtim1, HRTIM_ADCTRIGGER_1, 0x0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  pTimeBaseCfg.Period = 0x0060;
   pTimeBaseCfg.RepetitionCounter = 0x00;
   pTimeBaseCfg.PrescalerRatio = HRTIM_PRESCALERRATIO_MUL32;
   pTimeBaseCfg.Mode = HRTIM_MODE_CONTINUOUS;
@@ -66,34 +77,18 @@ void MX_HRTIM1_Init(void)
   }
   pTimerCtl.UpDownMode = HRTIM_TIMERUPDOWNMODE_UP;
   pTimerCtl.DualChannelDacEnable = HRTIM_TIMER_DCDE_DISABLED;
+
   if (HAL_HRTIM_WaveformTimerControl(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, &pTimerCtl) != HAL_OK)
   {
     Error_Handler();
   }
-  pTimerCfg.InterruptRequests = HRTIM_TIM_IT_NONE;
-  pTimerCfg.DMARequests = HRTIM_TIM_DMA_NONE;
-  pTimerCfg.DMASrcAddress = 0x0000;
-  pTimerCfg.DMADstAddress = 0x0000;
-  pTimerCfg.DMASize = 0x1;
-  pTimerCfg.HalfModeEnable = HRTIM_HALFMODE_DISABLED;
-  pTimerCfg.InterleavedMode = HRTIM_INTERLEAVED_MODE_DISABLED;
-  pTimerCfg.StartOnSync = HRTIM_SYNCSTART_DISABLED;
-  pTimerCfg.ResetOnSync = HRTIM_SYNCRESET_DISABLED;
-  pTimerCfg.DACSynchro = HRTIM_DACSYNC_NONE;
-  pTimerCfg.PreloadEnable = HRTIM_PRELOAD_DISABLED;
-  pTimerCfg.UpdateGating = HRTIM_UPDATEGATING_INDEPENDENT;
-  pTimerCfg.BurstMode = HRTIM_TIMERBURSTMODE_MAINTAINCLOCK;
-  pTimerCfg.RepetitionUpdate = HRTIM_UPDATEONREPETITION_DISABLED;
-  pTimerCfg.PushPull = HRTIM_TIMPUSHPULLMODE_DISABLED;
-  pTimerCfg.FaultEnable = HRTIM_TIMFAULTENABLE_NONE;
-  pTimerCfg.FaultLock = HRTIM_TIMFAULTLOCK_READWRITE;
-  pTimerCfg.DeadTimeInsertion = HRTIM_TIMDEADTIMEINSERTION_DISABLED;
-  pTimerCfg.DelayedProtectionMode = HRTIM_TIMER_A_B_C_DELAYEDPROTECTION_DISABLED;
-  pTimerCfg.UpdateTrigger = HRTIM_TIMUPDATETRIGGER_NONE;
-  pTimerCfg.ResetTrigger = HRTIM_TIMRESETTRIGGER_NONE;
-  pTimerCfg.ResetUpdate = HRTIM_TIMUPDATEONRESET_DISABLED;
-  pTimerCfg.ReSyncUpdate = HRTIM_TIMERESYNC_UPDATE_UNCONDITIONAL;
-  if (HAL_HRTIM_WaveformTimerConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, &pTimerCfg) != HAL_OK)
+  pTimeBaseCfg.Period = 0xAF80;
+  if (HAL_HRTIM_TimeBaseConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, &pTimeBaseCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  if (HAL_HRTIM_WaveformTimerControl(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, &pTimerCtl) != HAL_OK)
   {
     Error_Handler();
   }
@@ -114,9 +109,24 @@ void HAL_HRTIM_MspInit(HRTIM_HandleTypeDef* hrtimHandle)
     /* HRTIM1 clock enable */
     __HAL_RCC_HRTIM1_CLK_ENABLE();
 
-    /* HRTIM1 interrupt Init */
-    HAL_NVIC_SetPriority(HRTIM1_TIMA_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(HRTIM1_TIMA_IRQn);
+    /* HRTIM1 DMA Init */
+    /* HRTIM1_A Init */
+    hdma_hrtim1_a.Instance = DMA2_Channel1;
+    hdma_hrtim1_a.Init.Request = DMA_REQUEST_HRTIM1_A;
+    hdma_hrtim1_a.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_hrtim1_a.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_hrtim1_a.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_hrtim1_a.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_hrtim1_a.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma_hrtim1_a.Init.Mode = DMA_CIRCULAR;
+    hdma_hrtim1_a.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_hrtim1_a) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(hrtimHandle,hdmaTimerA,hdma_hrtim1_a);
+
   /* USER CODE BEGIN HRTIM1_MspInit 1 */
 
   /* USER CODE END HRTIM1_MspInit 1 */
@@ -134,8 +144,8 @@ void HAL_HRTIM_MspDeInit(HRTIM_HandleTypeDef* hrtimHandle)
     /* Peripheral clock disable */
     __HAL_RCC_HRTIM1_CLK_DISABLE();
 
-    /* HRTIM1 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(HRTIM1_TIMA_IRQn);
+    /* HRTIM1 DMA DeInit */
+    HAL_DMA_DeInit(hrtimHandle->hdmaTimerA);
   /* USER CODE BEGIN HRTIM1_MspDeInit 1 */
 
   /* USER CODE END HRTIM1_MspDeInit 1 */

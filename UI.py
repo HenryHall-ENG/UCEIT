@@ -14,13 +14,13 @@ import time
 PERIOD = 1/30
 
 class App(Frame):
-    def __init__(self, master, eitHandle):
+    def __init__(self, master):
         super().__init__(master)
-
         master.protocol("WM_DELETE_WINDOW", self.on_close)
+
         self.logger = LOG.logger()
-        # self.configure(background="lightgrey")
-        self.eitHandle = eitHandle
+        self.reader  = USB.dataReader('COM14',9600)
+        self.eitHandle = EIT.EIT(r=0.1,n_el=16,perm=0.6,h0=0.01,p=0.5,lam=0.01)
 
         self.r = DoubleVar()
         self.perm = DoubleVar()
@@ -153,11 +153,16 @@ class App(Frame):
         self.eitHandle.updateInverse(self.p.get(),self.lam.get(),self.perm.get())
 
     def updateEIT(self):
-        self.figEIT, self.axesEIT = self.eitHandle.displayEIT(self.figEIT, self.axesEIT,self.logger)
+        # print(self.reader.dataQueue.qsize())
+        self.eitHandle.dataGet(self.reader.dataQueue)
+        self.reader.dataQueue.queue.clear()
+        self.logger.storeData(self.eitHandle.data)
+        self.figEIT, self.axesEIT = self.eitHandle.displayEIT(self.figEIT, self.axesEIT)
         self.canvasEIT.draw()
 
         self.figMeas,self.axesMeas = self.eitHandle.displayMeas(self.figMeas,self.axesMeas)
         self.canvasMeas.draw()
+     
         self.after(int(PERIOD*1000),self.updateEIT)
 
     def on_close(self):
@@ -167,14 +172,9 @@ class App(Frame):
         sys.exit()  # Exit Python program
 
 def main():
-    eitHandle = EIT.EIT(r=0.1,n_el=16,perm=0.6,h0=0.01,p=0.5,lam=0.01)
-    # reader = USB.dataReader(9600,'COM12',1e5,1e3,PERIOD,eitHandle.callback)
-    
-    time.sleep(5)
-
     root = Tk()
     root.geometry("1400x1100")  # Set the window size
-    app = App(root, eitHandle)
+    app = App(root)
 
     app.place(x=0, y=0, width=1400, height=1100)  # Position and size the frame
     root.mainloop()

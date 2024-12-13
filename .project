@@ -47,19 +47,14 @@
 			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_adc_ex.c</locationURI>
 		</link>
 		<link>
+			<name>Drivers/STM32G4xx_HAL_Driver/stm32g4xx_hal_cordic.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cordic.c</locationURI>
+		</link>
+		<link>
 			<name>Drivers/STM32G4xx_HAL_Driver/stm32g4xx_hal_cortex.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_cortex.c</locationURI>
-		</link>
-		<link>
-			<name>Drivers/STM32G4xx_HAL_Driver/stm32g4xx_hal_dac.c</name>
-			<type>1</type>
-			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac.c</locationURI>
-		</link>
-		<link>
-			<name>Drivers/STM32G4xx_HAL_Driver/stm32g4xx_hal_dac_ex.c</name>
-			<type>1</type>
-			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Drivers/STM32G4xx_HAL_Driver/Src/stm32g4xx_hal_dac_ex.c</locationURI>
 		</link>
 		<link>
 			<name>Drivers/STM32G4xx_HAL_Driver/stm32g4xx_hal_dma.c</name>
@@ -170,6 +165,146 @@
 			<name>Middlewares/USB_Device_Library/usbd_ioreq.c</name>
 			<type>1</type>
 			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/STM32Cube_FW_G4_V1.5.2/Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/BasicMathFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/BasicMathFunctions/BasicMathFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/BasicMathFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/BasicMathFunctions/BasicMathFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/BayesFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/BayesFunctions/BayesFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/BayesFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/BayesFunctions/BayesFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/CommonTables.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/CommonTables/CommonTables.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/CommonTablesF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/CommonTables/CommonTablesF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/ComplexMathFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/ComplexMathFunctions/ComplexMathFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/ComplexMathFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/ComplexMathFunctions/ComplexMathFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/ControllerFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/ControllerFunctions/ControllerFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/DistanceFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/DistanceFunctions/DistanceFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/DistanceFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/DistanceFunctions/DistanceFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/FastMathFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/FastMathFunctions/FastMathFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/FastMathFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/FastMathFunctions/FastMathFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/FilteringFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/FilteringFunctions/FilteringFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/FilteringFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/FilteringFunctions/FilteringFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/InterpolationFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/InterpolationFunctions/InterpolationFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/InterpolationFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/InterpolationFunctions/InterpolationFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/MatrixFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/MatrixFunctions/MatrixFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/MatrixFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/MatrixFunctions/MatrixFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/QuaternionMathFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/QuaternionMathFunctions/QuaternionMathFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/SVMFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/SVMFunctions/SVMFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/SVMFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/SVMFunctions/SVMFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/StatisticsFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/StatisticsFunctions/StatisticsFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/StatisticsFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/StatisticsFunctions/StatisticsFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/SupportFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/SupportFunctions/SupportFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/SupportFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/SupportFunctions/SupportFunctionsF16.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/TransformFunctions.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/TransformFunctions/TransformFunctions.c</locationURI>
+		</link>
+		<link>
+			<name>Middlewares/CMSIS/CMSIS/DSP/Source/TransformFunctionsF16.c</name>
+			<type>1</type>
+			<locationURI>PARENT-5-PROJECT_LOC/STM32Cube/Repository/Packs/ARM/CMSIS/5.8.0/CMSIS/DSP/Source/TransformFunctions/TransformFunctionsF16.c</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

@@ -29,6 +29,11 @@ ADC_HandleTypeDef hadc2;
 ADC_HandleTypeDef hadc3;
 ADC_HandleTypeDef hadc4;
 ADC_HandleTypeDef hadc5;
+DMA_HandleTypeDef hdma_adc1;
+DMA_HandleTypeDef hdma_adc2;
+DMA_HandleTypeDef hdma_adc3;
+DMA_HandleTypeDef hdma_adc4;
+DMA_HandleTypeDef hdma_adc5;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
@@ -58,9 +63,9 @@ void MX_ADC1_Init(void)
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -120,9 +125,9 @@ void MX_ADC2_Init(void)
   hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.NbrOfConversion = 1;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
+  hadc2.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
   hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.DMAContinuousRequests = ENABLE;
   hadc2.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc2.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc2) != HAL_OK)
@@ -175,9 +180,9 @@ void MX_ADC3_Init(void)
   hadc3.Init.ContinuousConvMode = DISABLE;
   hadc3.Init.NbrOfConversion = 1;
   hadc3.Init.DiscontinuousConvMode = DISABLE;
-  hadc3.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
+  hadc3.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
   hadc3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc3.Init.DMAContinuousRequests = DISABLE;
+  hadc3.Init.DMAContinuousRequests = ENABLE;
   hadc3.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc3.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc3) != HAL_OK)
@@ -237,9 +242,9 @@ void MX_ADC4_Init(void)
   hadc4.Init.ContinuousConvMode = DISABLE;
   hadc4.Init.NbrOfConversion = 1;
   hadc4.Init.DiscontinuousConvMode = DISABLE;
-  hadc4.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
+  hadc4.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
   hadc4.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc4.Init.DMAContinuousRequests = DISABLE;
+  hadc4.Init.DMAContinuousRequests = ENABLE;
   hadc4.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc4.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc4) != HAL_OK)
@@ -291,9 +296,9 @@ void MX_ADC5_Init(void)
   hadc5.Init.ContinuousConvMode = DISABLE;
   hadc5.Init.NbrOfConversion = 1;
   hadc5.Init.DiscontinuousConvMode = DISABLE;
-  hadc5.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T1_TRGO;
+  hadc5.Init.ExternalTrigConv = ADC_EXTERNALTRIG_HRTIM_TRG1;
   hadc5.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISINGFALLING;
-  hadc5.Init.DMAContinuousRequests = DISABLE;
+  hadc5.Init.DMAContinuousRequests = ENABLE;
   hadc5.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc5.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc5) != HAL_OK)
@@ -357,9 +362,24 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* ADC1 interrupt Init */
-    HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+    /* ADC1 DMA Init */
+    /* ADC1 Init */
+    hdma_adc1.Instance = DMA1_Channel1;
+    hdma_adc1.Init.Request = DMA_REQUEST_ADC1;
+    hdma_adc1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc1.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc1.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_adc1.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc1.Init.Mode = DMA_CIRCULAR;
+    hdma_adc1.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_adc1) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc1);
+
   /* USER CODE BEGIN ADC1_MspInit 1 */
 
   /* USER CODE END ADC1_MspInit 1 */
@@ -394,9 +414,24 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* ADC2 interrupt Init */
-    HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+    /* ADC2 DMA Init */
+    /* ADC2 Init */
+    hdma_adc2.Instance = DMA1_Channel2;
+    hdma_adc2.Init.Request = DMA_REQUEST_ADC2;
+    hdma_adc2.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc2.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc2.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc2.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_adc2.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc2.Init.Mode = DMA_CIRCULAR;
+    hdma_adc2.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_adc2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc2);
+
   /* USER CODE BEGIN ADC2_MspInit 1 */
 
   /* USER CODE END ADC2_MspInit 1 */
@@ -431,9 +466,24 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /* ADC3 interrupt Init */
-    HAL_NVIC_SetPriority(ADC3_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(ADC3_IRQn);
+    /* ADC3 DMA Init */
+    /* ADC3 Init */
+    hdma_adc3.Instance = DMA1_Channel3;
+    hdma_adc3.Init.Request = DMA_REQUEST_ADC3;
+    hdma_adc3.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc3.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc3.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc3.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_adc3.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc3.Init.Mode = DMA_CIRCULAR;
+    hdma_adc3.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_adc3) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc3);
+
   /* USER CODE BEGIN ADC3_MspInit 1 */
 
   /* USER CODE END ADC3_MspInit 1 */
@@ -468,9 +518,24 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-    /* ADC4 interrupt Init */
-    HAL_NVIC_SetPriority(ADC4_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(ADC4_IRQn);
+    /* ADC4 DMA Init */
+    /* ADC4 Init */
+    hdma_adc4.Instance = DMA1_Channel4;
+    hdma_adc4.Init.Request = DMA_REQUEST_ADC4;
+    hdma_adc4.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc4.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc4.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc4.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_adc4.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc4.Init.Mode = DMA_CIRCULAR;
+    hdma_adc4.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_adc4) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc4);
+
   /* USER CODE BEGIN ADC4_MspInit 1 */
 
   /* USER CODE END ADC4_MspInit 1 */
@@ -505,9 +570,24 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-    /* ADC5 interrupt Init */
-    HAL_NVIC_SetPriority(ADC5_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(ADC5_IRQn);
+    /* ADC5 DMA Init */
+    /* ADC5 Init */
+    hdma_adc5.Instance = DMA1_Channel5;
+    hdma_adc5.Init.Request = DMA_REQUEST_ADC5;
+    hdma_adc5.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_adc5.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_adc5.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_adc5.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_adc5.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_adc5.Init.Mode = DMA_CIRCULAR;
+    hdma_adc5.Init.Priority = DMA_PRIORITY_LOW;
+    if (HAL_DMA_Init(&hdma_adc5) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(adcHandle,DMA_Handle,hdma_adc5);
+
   /* USER CODE BEGIN ADC5_MspInit 1 */
 
   /* USER CODE END ADC5_MspInit 1 */
@@ -533,15 +613,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_0);
 
-    /* ADC1 interrupt Deinit */
-  /* USER CODE BEGIN ADC1:ADC1_2_IRQn disable */
-    /**
-    * Uncomment the line below to disable the "ADC1_2_IRQn" interrupt
-    * Be aware, disabling shared interrupt may affect other IPs
-    */
-    /* HAL_NVIC_DisableIRQ(ADC1_2_IRQn); */
-  /* USER CODE END ADC1:ADC1_2_IRQn disable */
-
+    /* ADC1 DMA DeInit */
+    HAL_DMA_DeInit(adcHandle->DMA_Handle);
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
   /* USER CODE END ADC1_MspDeInit 1 */
@@ -562,15 +635,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_6);
 
-    /* ADC2 interrupt Deinit */
-  /* USER CODE BEGIN ADC2:ADC1_2_IRQn disable */
-    /**
-    * Uncomment the line below to disable the "ADC1_2_IRQn" interrupt
-    * Be aware, disabling shared interrupt may affect other IPs
-    */
-    /* HAL_NVIC_DisableIRQ(ADC1_2_IRQn); */
-  /* USER CODE END ADC2:ADC1_2_IRQn disable */
-
+    /* ADC2 DMA DeInit */
+    HAL_DMA_DeInit(adcHandle->DMA_Handle);
   /* USER CODE BEGIN ADC2_MspDeInit 1 */
 
   /* USER CODE END ADC2_MspDeInit 1 */
@@ -591,8 +657,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     */
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_1);
 
-    /* ADC3 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(ADC3_IRQn);
+    /* ADC3 DMA DeInit */
+    HAL_DMA_DeInit(adcHandle->DMA_Handle);
   /* USER CODE BEGIN ADC3_MspDeInit 1 */
 
   /* USER CODE END ADC3_MspDeInit 1 */
@@ -613,8 +679,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     */
     HAL_GPIO_DeInit(GPIOE, GPIO_PIN_14);
 
-    /* ADC4 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(ADC4_IRQn);
+    /* ADC4 DMA DeInit */
+    HAL_DMA_DeInit(adcHandle->DMA_Handle);
   /* USER CODE BEGIN ADC4_MspDeInit 1 */
 
   /* USER CODE END ADC4_MspDeInit 1 */
@@ -635,8 +701,8 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
     */
     HAL_GPIO_DeInit(GPIOE, GPIO_PIN_8);
 
-    /* ADC5 interrupt Deinit */
-    HAL_NVIC_DisableIRQ(ADC5_IRQn);
+    /* ADC5 DMA DeInit */
+    HAL_DMA_DeInit(adcHandle->DMA_Handle);
   /* USER CODE BEGIN ADC5_MspDeInit 1 */
 
   /* USER CODE END ADC5_MspDeInit 1 */

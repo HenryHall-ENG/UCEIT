@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import queue
+import matplotlib.colors as col
 import pyeit
 import pyeit.mesh as mesh
 import pyeit.eit.protocol as protocol
@@ -50,7 +51,7 @@ class Inverse():
         self.eit.setup(p=0.50, lamb=0.01, perm=1, jac_normalized=True)
 
     def inverseSolve(self, data1, data2):
-        ds = self.eit.solve(data2, data1, normalize=True)
+        ds = self.eit.solve(np.array(data2), np.array(data1), normalize=True)
         x, y, ds = self.eit.mask_value(ds, mask_value=np.NAN)
         return ds
 
@@ -62,11 +63,12 @@ class EIT():
 
         self.ref = None
         self.is_running = False
-     
-    def callback(self, amp):
-        self.data = amp
+        
+    def dataGet(self, queue):
+        self.data = queue.get()
 
     def setRef(self):
+        # self.dataGet(queue)
         self.ref = self.data
         self.is_running = True
 
@@ -101,29 +103,28 @@ class EIT():
         axes.set_xlim(-1)
         return fig, axes
     
-    def displayEIT(self, fig, axes,logger):
+    def displayEIT(self, fig, axes):
         ds = None
         if self.is_running:
             ds = self.inverse.inverseSolve(self.data, self.ref)
-            logger.storeData(self.data)
             axes.cla()
 
-            im = axes.imshow(np.real(ds), interpolation="none", cmap=plt.cm.viridis)
+            
+            im = axes.imshow(np.real(ds), interpolation="none", cmap=plt.cm.plasma, norm=col.PowerNorm(gamma=1.2, vmin=0, vmax=1))
+            print(np.max(np.nan_to_num(ds,nan=0)))
             axes.axis("equal")
-            fig.colorbar(im, ax=self.axes.ravel().tolist())
+            # fig.colorbar(im, ax=axes.ravel().tolist())
 
         return fig, axes
     
     def displayMeas(self, fig, axes):
-        data = None
+        axes.cla()
+        axes.plot(np.arange(0,len(self.data),1),self.data)
         if self.is_running:
-            axes.cla()
-            data = self.data
-            axes.plot(np.arange(0,len(data),1),data)
             axes.plot(np.arange(0,len(self.ref),1),self.ref, '--')
-            axes.set_title('Live Measurements')
-            axes.grid(True)
-            axes.set_xlim(-1)
+        axes.set_title('Live Measurements')
+        axes.grid(True)
+        axes.set_xlim(-1)
         return fig, axes
 
 

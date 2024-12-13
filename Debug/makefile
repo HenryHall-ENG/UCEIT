@@ -12,6 +12,7 @@ RM := rm -rf
 -include USB_Device/Target/subdir.mk
 -include USB_Device/App/subdir.mk
 -include Middlewares/USB_Device_Library/subdir.mk
+-include Middlewares/CMSIS/CMSIS/DSP/Source/subdir.mk
 -include Drivers/STM32G4xx_HAL_Driver/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
@@ -88,7 +89,7 @@ main-build: UCEIT.elf secondary-outputs
 
 # Tool invocations
 UCEIT.elf UCEIT.map: $(OBJS) $(USER_OBJS) C:\Users\henri\OneDrive\Documents\EIT\git\UCEIT\STM32G474VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "UCEIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\henri\OneDrive\Documents\EIT\git\UCEIT\STM32G474VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UCEIT.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+	arm-none-eabi-g++ -o "UCEIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\henri\OneDrive\Documents\EIT\git\UCEIT\STM32G474VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="UCEIT.map" -Wl,--gc-sections -static -LC:/Users/henri/STM32Cube/Repository/Packs/STMicroelectronics/X-CUBE-ALGOBUILD/1.4.0/Middlewares/Third_Party/ARM/DSP/Lib --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

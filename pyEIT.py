@@ -15,7 +15,7 @@ import time
 
 fs = 1e6
 f_excitation = 1e3
-PORT = 'COM12'
+PORT = 'COM14'
 BAUD = 9600
 
 def init_fem(r,perm,n_el):
@@ -154,7 +154,7 @@ def main():
     magOld = []
     read_serial(ser)
     ds = 0
-    fig, axes = plt.subplots(4,4)
+    fig, axes = plt.subplots(2,2)
     fig.tight_layout()
 
     # ani = Anim.FuncAnimation(fig=fig, func=update, fargs=(DS,fig,axes,),frames=40, interval=40)
@@ -163,8 +163,8 @@ def main():
     while is_running: 
         raw_data = read_serial(ser)
         data_dictionary=proccess_data(raw_data, data_dictionary)
-        print(len(data_dictionary))
-        if len(data_dictionary) > 15:
+        print((data_dictionary.keys()))
+        if len(data_dictionary) > 3:
             if min_length(data_dictionary) > 200:
                 displayRawData(fig,axes,data_dictionary)
                 is_running = False
@@ -186,5 +186,5 @@ def update(frame,data_dictionary,fig,axes):
     # displayMeasurements( mag, fig,axes)
     displayRawData(fig, axes, data_dictionary)
 
-# main()
+main()
 

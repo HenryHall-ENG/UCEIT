@@ -35,6 +35,7 @@ extern "C" {
 extern HRTIM_HandleTypeDef hhrtim1;
 
 /* USER CODE BEGIN Private defines */
+extern DMA_HandleTypeDef hdma_hrtim1_a;
 
 /* USER CODE END Private defines */
 

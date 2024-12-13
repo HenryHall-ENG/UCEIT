@@ -41,6 +41,7 @@ SUBDIRS := \
 Core/Src \
 Core/Startup \
 Drivers/STM32G4xx_HAL_Driver \
+Middlewares/CMSIS/CMSIS/DSP/Source \
 Middlewares/USB_Device_Library \
 USB_Device/App \
 USB_Device/Target \

@@ -11,7 +11,7 @@ class logger():
     def storeData(self, data):
         if self.isRunning == True:
             self.timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-            self.cursor.execute("INSERT INTO measurements (timestamp, data) VALUES (?, ?)", (self.timestamp, json.dumps(data)))
+            self.cursor.execute("INSERT INTO measurements (timestamp, data) VALUES (?, ?)", (self.timestamp, json.dumps(list(data))))
             self.conn.commit()
 
     def getData(self):
