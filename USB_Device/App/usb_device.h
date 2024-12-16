@@ -33,6 +33,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 
+
 /* USER CODE END INCLUDE */
 
 /** @addtogroup USBD_OTG_DRIVER
@@ -51,6 +52,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* USER CODE END PV */
 

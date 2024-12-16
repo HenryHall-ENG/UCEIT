@@ -53,10 +53,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_SIZE 25
+#define BUFFER_SIZE 128
+//#define BUFFER_SIZE 1024
 #define MEAS_SIZE 256
 #define LUT_SIZE 100 //Size of the stimulation Look Up Table
-#define USB_PAYLOAD 8 //Size of the USB Buffer
 
 #define TIMER2_PRESCALAR 1 //Prescalar for TIM2
 #define TIMER2_FREQ 1e5 //Desired Frequency for TIM2
@@ -67,10 +67,8 @@
 
 
 #define MAIN_FREQ 2 //Update frequency of the Main program
-#define USB_FREQ 2000 //Frequency of the USB communication
-
-#define CURRENT_FREQ 500
-#define VOLTAGE_FREQ 50
+#define VOLTAGE_FREQ 20
+//#define VOLTAGE_FREQ 10
 
 
 #define CLKFREQ 170e6 //SYSCKL Frequency
@@ -92,20 +90,18 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-void send_all_buffer(void);
 void updateVoltage(uint16_t index);
-void send_adc_buffer(uint16_t *array, size_t size, uint8_t adc);
-void write_dac(uint16_t value);
 void init_lut(void);
 void updateCurrent(uint16_t electrodes);
 void USB_Send(char* message);
 void WriteBits(GPIO_TypeDef* GPIOx, uint16_t pinMask, uint8_t value);
 uint16_t calcMag(uint16_t * array);
-void clearAllBuffers(void);
 void checkStim(void);
 void setGain(uint16_t adc, uint8_t gain);
 void calcMagnitude(void);
-void sendMagnitude(uint16_t *array);
+void sendMagnitude(void);
+void sendBuffers(void);
+
 
 /* USER CODE END PFP */
 
@@ -128,18 +124,13 @@ volatile bool is_voltage_mux = 0;
 volatile bool is_current_mux = 0;
 
 
-uint16_t adc1Buff[BUFFER_SIZE];
-uint16_t adc2Buff[BUFFER_SIZE];
-uint16_t adc3Buff[BUFFER_SIZE];
-uint16_t adc4Buff[BUFFER_SIZE];
-uint16_t adc5Buff[BUFFER_SIZE];
+uint16_t adc1Buff[BUFFER_SIZE] = {0};
+uint16_t adc2Buff[BUFFER_SIZE] = {0};
+uint16_t adc3Buff[BUFFER_SIZE] = {0};
+uint16_t adc4Buff[BUFFER_SIZE] = {0};
+uint16_t adc5Buff[BUFFER_SIZE] = {0};
 uint16_t magnitude[MEAS_SIZE] = {0};
 
-float32_t omega;
-float32_t cosine;
-float32_t sine;
-float32_t coeff;
-float32_t q1, q2, q0;
 
 /* USER CODE END 0 */
 
@@ -184,6 +175,8 @@ int main(void)
   MX_CORDIC_Init();
   /* USER CODE BEGIN 2 */
 
+
+
   //---------- ADC Calibration ----------
   if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)
   	  Error_Handler();
@@ -227,10 +220,7 @@ int main(void)
   //---------- LUT Initialisation ----------
   init_lut();
   HAL_Delay(100);
-
-
   HAL_HRTIM_SimpleBaseStart_DMA(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, (uint32_t)&sinewave[0], (uint32_t)&GPIOC->ODR, LUT_SIZE);
-
 
 
 
@@ -245,10 +235,6 @@ int main(void)
 
 
 
-  omega = 2.0f * PI * DAC_FREQ / SAMPLING_FREQUENCY;
-  cosine = arm_cos_f32(omega);
-  sine = arm_sin_f32(omega);
-  coeff = 2.0f * cosine;
 
 
 
@@ -258,29 +244,28 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
 	if (is_main) { // Toggles a status LED
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_2);
 		is_main = 0;
 	}
-	if (is_usb) { //Sends all data and triggers a MUX change
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_1);
-//		send_all_buffer();
-//				clearAllBuffers();
-		is_usb = 0;
-	  }
 	if (is_voltage_mux) { //Updates Voltage MUX and triggers a MUX change
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_1);
-		calcMagnitude();
+//		calcMagnitude();
+		sendBuffers();
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_1);
+
 		voltage_mux++;
 		if (voltage_mux > 3) {
 			voltage_mux = 0;
 			current_mux++;
 			if (current_mux > 15) {
 				  current_mux = 0;
-				  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_0);
-				  sendMagnitude(magnitude);
-				  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_0);
+				  uint16_t marker = 0xAA00;
+				  CDC_Transmit_FS((uint8_t*)&marker, 2);
+
+//				  sendMagnitude();
+
 				}
 		}
 		updateVoltage(voltage_mux);
@@ -288,23 +273,11 @@ int main(void)
 		checkStim();
 		is_voltage_mux = 0;
 	  }
-//	  if (is_current_mux) { //Updates Current MUX
-////		  send_all_buffer();
-////		  current_mux++;
-////		  if (current_mux > 15) {
-////			  current_mux = 0;
-////		  }
-////
-////		  updateCurrent(current_mux);
-////		  checkStim();
-////		  clearAllBuffers();
-////		  is_current_mux = 0;
-//	  }
 
     /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
   }
+    /* USER CODE BEGIN 3 */
+
   /* USER CODE END 3 */
 }
 
@@ -359,39 +332,6 @@ void SystemClock_Config(void)
 
 
 
-//---------- ADC Callback ----------
-/*
- * Reads all ADC values into the appropriate double buffer.
- *
- * Args:
- * 		hadc: Handle type for the adc, defines which
- * 			adc is being used
- */
-//void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-//{
-////	char buffer[USB_PAYLOAD + 1];
-//    if (hadc->Instance == ADC1) {
-////    	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_0);
-//    	uint32_t adc1_val = HAL_ADC_GetValue(hadc);
-//    	writeDbleBuf (&buffers.adc1, adc1_val);
-//    }
-//    if (hadc->Instance == ADC2) {
-//    	uint32_t adc2_val = HAL_ADC_GetValue(hadc);
-//    	writeDbleBuf (&buffers.adc2, adc2_val);
-//    }
-//    if (hadc->Instance == ADC3) {
-//    	uint32_t adc3_val = HAL_ADC_GetValue(hadc);
-//    	writeDbleBuf (&buffers.adc3, adc3_val);
-//    }
-//    if (hadc->Instance == ADC4) {
-//    	uint32_t adc4_val = HAL_ADC_GetValue(hadc);
-//    	writeDbleBuf (&buffers.adc4, adc4_val);
-//    }
-//    if (hadc->Instance == ADC5) {
-//    	uint32_t adc5_val = HAL_ADC_GetValue(hadc);
-//    	writeDbleBuf (&buffers.adc5, adc5_val);
-//    }
-//}
 
 //---------- TIM2 Callback ----------
 /*
@@ -411,120 +351,49 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		if (gl_ticks % (uint64_t)(TIMER2_FREQ / MAIN_FREQ) == 1) {
 			is_main = 1;
 		}
-//	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / USB_FREQ) == 1) {
-//	    	is_usb = 1;
-//	    }
 	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / VOLTAGE_FREQ) == 1) {
 	    	is_voltage_mux = 1;
 	    }
-//	    if (gl_ticks % (uint64_t)(TIMER2_FREQ / CURRENT_FREQ) == 1) {
-//	    	is_current_mux = 1;
-//	    }
-//        if (gl_ticks >= TIMER2_FREQ) {
-//            gl_ticks = 0;
-//        }
 	}
 
 }
 
-//---------- HRTIM Callback ----------
-/*
- * Calls when the timer reaches its set period.
- * This triggers a new value to be sent to the DAC
- * from the predefined LUT.
- *
- * Args:
- * 		hhrtim: Handle type for the timer to define
- * 			which timer has triggered the callback.
- */
-//void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef * hhrtim,
-//                                              uint32_t TimerIdx)
-//{
-//	if (hhrtim->Instance == HRTIM1) {
-//
-////		write_dac(sinewave[sine_idx]);
-////		sine_idx++;
-////		if (sine_idx > (LUT_SIZE-1)) {
-////			sine_idx=0;
-////		}
-//	}
-//}
 
-void clearAllBuffers(void) {
-	memset(adc1Buff, 0, BUFFER_SIZE * sizeof(uint16_t));
-	memset(adc2Buff, 0, BUFFER_SIZE * sizeof(uint16_t));
-	memset(adc3Buff, 0, BUFFER_SIZE * sizeof(uint16_t));
-	memset(adc4Buff, 0, BUFFER_SIZE * sizeof(uint16_t));
-	memset(adc5Buff, 0, BUFFER_SIZE * sizeof(uint16_t));
+void sendMagnitude(void) {
+	uint8_t* data = (uint8_t*)magnitude;
+	CDC_Transmit_FS(data, 512);
 }
 
+void sendBuffers(void) {
+	uint8_t idx_A1 = (current_mux) *16 + 4 * (1 - 1) + voltage_mux;
+	uint8_t idx_A2 = (current_mux) *16 + 4 * (2 - 1) + voltage_mux;
+	uint8_t idx_A3 = (current_mux) *16 + 4 * (3 - 1) + voltage_mux;
+	uint8_t idx_A4 = (current_mux) *16 + 4 * (4 - 1) + voltage_mux;
 
-//----------Buffer Send ----------
-/*
- * Sends an array to the host PC with a
- * unique ID based on multiplexing state
- * and ADC used.
- *
- * Args:
- * 		array: Data to be sent to the host PC
- * 		size: Length of the array being sent
- * 		mux: Multiplexing value for the voltage
- * 			reading system
-* 		adc: The ADC unit that the buffer is associated with.
- */
-//void sendMagnitude(uint16_t *array) {
-//	char buffer[USB_PAYLOAD];
-//
-//	for (size_t i = 0; i < MEAS_SIZE; i++) {
-//		snprintf(buffer, sizeof(buffer), "%u\r\n", array[i]);
-//		CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-//	}
-//	snprintf(buffer, sizeof(buffer), "X\r\n");
-//	CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-//}
+	__disable_irq();
 
-//void sendMagnitude(uint16_t *array) {
-//    char buffer[2048];  // Large enough buffer to hold entire transmission
-//    char *ptr = buffer;
-//    size_t remaining = sizeof(buffer);
-//
-//    // Convert entire array to string
-//    for (size_t i = 0; i < MEAS_SIZE; i++) {
-//        int written = snprintf(ptr, remaining, "%u\r\n", array[i]);
-//        ptr += written;
-//        remaining -= written;
-//    }
-//
-//    // Append end marker
-//    snprintf(ptr, remaining, "X\r\n");
-//
-//    // Send entire buffer in one transmission
-//    CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer));
-//}
-
-void sendMagnitude(uint16_t *array) {
-	char buffer[2048];  // Large enough buffer to hold entire transmission
-	char *ptr = buffer;
-	size_t remaining = sizeof(buffer);
-
-	// Convert entire array to string
-	for (size_t i = 0; i < MEAS_SIZE; i++) {
-		int written = snprintf(ptr, remaining, "%u\r\n", array[i]);
-		ptr += written;
-		remaining -= written;
-	}
-
-	// Append end marker
-	snprintf(ptr, remaining, "X\r\n");
+	uint8_t* data1 = (uint8_t*)adc1Buff;
+	data1[0] = idx_A1;
 
 
+	uint8_t* data2 = (uint8_t*)adc2Buff;
+	data2[0] = idx_A2;
 
-//    for (size_t total_sent = 0; total_sent <= 2048; total_sent += 64) {
-//    	CDC_Transmit_FS((uint8_t*)buffer + total_sent, 64);
-//	}
-    CDC_Transmit_FS((uint8_t*)buffer, strlen(buffer)); // Send only the used portion
+
+	uint8_t* data3 = (uint8_t*)adc3Buff;
+	data3[0] = idx_A3;
+
+
+	uint8_t* data4 = (uint8_t*)adc4Buff;
+	data4[0] = idx_A4;
+	__enable_irq();
+
+
+	CDC_Transmit_FS(data1, BUFFER_SIZE*2);
+	CDC_Transmit_FS(data2, BUFFER_SIZE*2);
+	CDC_Transmit_FS(data3, BUFFER_SIZE*2);
+	CDC_Transmit_FS(data4, BUFFER_SIZE*2);
 }
-
 
 void calcMagnitude(void) {
 	int firstElec_A1 = 4 * (1 - 1) + voltage_mux + 1;
@@ -543,6 +412,8 @@ void calcMagnitude(void) {
 	magnitude[idx_A2] = calcMag(adc2Buff);
 	magnitude[idx_A3] = calcMag(adc3Buff);
 	magnitude[idx_A4] = calcMag(adc4Buff);
+
+
 }
 
 
@@ -552,67 +423,7 @@ uint16_t calcMag(uint16_t * array) {
 	arm_max_q15((q15_t*)array, BUFFER_SIZE, &max, &idxMax);
 	arm_min_q15((q15_t*)array, BUFFER_SIZE, &min, &idxMin);
 	return max-min;
-
-//	q1 = 0.0f;
-//	q2 = 0.0f;
-//
-//	// Apply Goertzel filter using CMSIS
-//	for (size_t i = 0; i < BUFFER_SIZE; i++) {
-//		q0 = coeff * q1 - q2 + (float32_t)(array[i] - 2048);
-//		q2 = q1;
-//		q1 = q0;
-//	}
-//
-//	// Compute real and imaginary components
-//	float32_t real = q1 - q2 * cosine;
-//	float32_t imag = q2 * sine;
-//
-//	// Compute magnitude using CMSIS
-//	float32_t magnitude;
-//	arm_sqrt_f32(real * real + imag * imag, &magnitude);
-//
-//	return (uint16_t)magnitude;
 }
-
-//---------- Data Send ----------
-/*
- *Reads all the data from the non-active
- *window in the buffer and calls to the send
- *data function.
- *
- * Args:
- * 		buff: Buffer structure that is being
- * 			sent.
- */
-void send_all_buffer() {
-	uint8_t buffer[12];
-
-//	uint16_t value1 = calcMag(adc1Buff,BUFFER_SIZE);
-//	uint16_t value2 = calcMag(adc1Buff,BUFFER_SIZE);
-//	uint16_t value3 = calcMag(adc1Buff,BUFFER_SIZE);
-//	uint16_t value4 = calcMag(adc1Buff,BUFFER_SIZE);
-//
-//    buffer[0] = (uint8_t)(value1 >> 8);
-//    buffer[1] = (uint8_t)(value1 & 0xFF);
-//    buffer[2] = (uint8_t)(value2 >> 8);
-//    buffer[3] = (uint8_t)(value2 & 0xFF);
-//    buffer[4] = (uint8_t)(value3 >> 8);
-//    buffer[5] = (uint8_t)(value3 & 0xFF);
-//    buffer[6] = (uint8_t)(value4 >> 8);
-//    buffer[7] = (uint8_t)(value4 & 0xFF);
-//    buffer[8] = (uint8_t)(current_mux >> 8);
-//    buffer[9] = (uint8_t)(current_mux & 0xFF);
-//    buffer[10] = (uint8_t)(voltage_mux >> 8);
-//    buffer[11] = (uint8_t)(voltage_mux & 0xFF);
-//    CDC_Transmit_FS(buffer, 12);
-
-//	send_adc_buffer(adc1Buff, BUFFER_SIZE, 1);
-//	send_adc_buffer(adc2Buff, BUFFER_SIZE, 2);
-//	send_adc_buffer(adc3Buff, BUFFER_SIZE, 3);
-//	send_adc_buffer(adc4Buff, BUFFER_SIZE, 4);
-//	send_adc_buffer(adc5Buff, BUFFER_SIZE, 5);
-}
-
 
 
 

@@ -6,24 +6,37 @@ import time
 import sys
 import re
 import scipy.signal as sig
+import struct
 
 class USB():
     def __init__(self, port, baud):
         self.port = port
         self.baud = baud
-        self.line = []
+        self.data = np.zeros(256)   
+        
         
     def readUSB(self):
-        data = []
-        while True:
-            line = self.ser.readline().decode().strip()
-            if line == 'X':
-                break
-            if line:
-                data.append(int(line))
+        raw_data = self.ser.read(512)
+        line = list(struct.unpack(f'<{256}H', raw_data))
         self.ser.flush()
-        return data
+        mags = self.parseLine(line)
+        return mags  
+
+    def readBuffer(self, size=128):
+        raw_data = self.ser.read(size*2)
+        line = list(struct.unpack(f'<{size}H', raw_data))
+        self.getAmp(line) 
+
+    def getAmp(self,line):
+        idx = line[0]
+        print(idx)
+        data = line[1:]
+        amp = np.max(data) - np.min(data)
+        self.data[idx] = amp
+        # print(self.data)
+
     
+
     def parseLine(self, line):
         if line is None:
             return
@@ -44,9 +57,6 @@ class USB():
 
 
 # class DataProcessor:
-
-    
-                
 
         # data = re.match(r'A(\d+)V(\d+)C(\d+)\s+(\d+)', line)
         # if data is None:
@@ -147,10 +157,11 @@ class dataReader():
 
     def reading(self):
         while True:
-            line = (self.usb.readUSB())
-            if line:
-                magnitude = self.usb.parseLine(line)
-                self.dataQueue.put(magnitude*3.3/(2**12*50))
+            self.usb.readBuffer()
+            
+            # line = self.usb.readUSB()
+            # print(line)
+            self.dataQueue.put(self.usb.parseLine(self.usb.data)*3.3/(2**12*50))
 
 
 
@@ -164,20 +175,24 @@ import matplotlib.animation as Anim
 # usb = USB('COM14',9600)
 # usb.connect()
 
-# reader = dataReader('COM14',9600)
-# fig,axes = plt.subplots()
-
-# def show(mag):
-#     axes.cla()
-#     # axes.set_ylim(0.01)
-#     axes.grid(True)
-#     axes.plot(mag)
-#     plt.pause(0.01)
-
+reader = dataReader('COM14',9600)
 # while True:
-#    data = reader.dataQueue.get()
-#    show(data)
-#    time.sleep(1)
+#     pass
+
+fig,axes = plt.subplots()
+
+def show(mag):
+    axes.cla()
+    # axes.set_ylim(0.01)
+    axes.grid(True)
+    axes.plot(mag)
+    plt.pause(0.01)
+
+while True:
+    data = reader.dataQueue.get()
+    print(len(data))
+    show(data)
+    time.sleep(1)
 
 # while True:
 #     pass
