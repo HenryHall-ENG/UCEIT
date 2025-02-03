@@ -53,7 +53,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 32
 //#define BUFFER_SIZE 1024
 #define MEAS_SIZE 256
 #define LUT_SIZE 100 //Size of the stimulation Look Up Table
@@ -63,11 +63,12 @@
 
 
 #define DAC_FREQ 1e4 //Desired Frequency of the Stimulation waveform
-#define SAMPLING_FREQUENCY 1e5
+#define SAMPLING_FREQUENCY 103125
+//1e5
 
 
 #define MAIN_FREQ 2 //Update frequency of the Main program
-#define VOLTAGE_FREQ 20
+#define VOLTAGE_FREQ 2
 //#define VOLTAGE_FREQ 10
 
 
@@ -124,12 +125,20 @@ volatile bool is_voltage_mux = 0;
 volatile bool is_current_mux = 0;
 
 
-uint16_t adc1Buff[BUFFER_SIZE] = {0};
-uint16_t adc2Buff[BUFFER_SIZE] = {0};
-uint16_t adc3Buff[BUFFER_SIZE] = {0};
-uint16_t adc4Buff[BUFFER_SIZE] = {0};
-uint16_t adc5Buff[BUFFER_SIZE] = {0};
+//uint16_t adc1Buff[BUFFER_SIZE] = {0};
+//uint16_t adc2Buff[BUFFER_SIZE] = {0};
+//uint16_t adc3Buff[BUFFER_SIZE] = {0};
+//uint16_t adc4Buff[BUFFER_SIZE] = {0};
+//uint16_t adc5Buff[BUFFER_SIZE] = {0};
 uint16_t magnitude[MEAS_SIZE] = {0};
+
+uint16_t adcAllBuff[5 * BUFFER_SIZE] = {0};
+
+uint16_t* adc1Buff = &adcAllBuff[0];
+uint16_t* adc2Buff = &adcAllBuff[BUFFER_SIZE];
+uint16_t* adc3Buff = &adcAllBuff[2 * BUFFER_SIZE];
+uint16_t* adc4Buff = &adcAllBuff[3 * BUFFER_SIZE];
+uint16_t* adc5Buff = &adcAllBuff[4 * BUFFER_SIZE];
 
 
 /* USER CODE END 0 */
@@ -261,8 +270,8 @@ int main(void)
 			current_mux++;
 			if (current_mux > 15) {
 				  current_mux = 0;
-				  uint16_t marker = 0xAA00;
-				  CDC_Transmit_FS((uint8_t*)&marker, 2);
+//				  uint16_t marker = 0xAA00;
+//				  CDC_Transmit_FS((uint8_t*)&marker, 2);
 
 //				  sendMagnitude();
 
@@ -372,27 +381,40 @@ void sendBuffers(void) {
 
 	__disable_irq();
 
-	uint8_t* data1 = (uint8_t*)adc1Buff;
-	data1[0] = idx_A1;
+	adc1Buff[0] = idx_A1;
+	adc2Buff[0] = idx_A2;
+	adc3Buff[0] = idx_A3;
+	adc4Buff[0] = idx_A4;
+	adc5Buff[0] = 0;
 
+	uint8_t* data = (uint8_t*)adcAllBuff;
 
-	uint8_t* data2 = (uint8_t*)adc2Buff;
-	data2[0] = idx_A2;
+	CDC_Transmit_FS(data, BUFFER_SIZE*10);
 
-
-	uint8_t* data3 = (uint8_t*)adc3Buff;
-	data3[0] = idx_A3;
-
-
-	uint8_t* data4 = (uint8_t*)adc4Buff;
-	data4[0] = idx_A4;
 	__enable_irq();
 
 
-	CDC_Transmit_FS(data1, BUFFER_SIZE*2);
-	CDC_Transmit_FS(data2, BUFFER_SIZE*2);
-	CDC_Transmit_FS(data3, BUFFER_SIZE*2);
-	CDC_Transmit_FS(data4, BUFFER_SIZE*2);
+//	uint8_t* data1 = (uint8_t*)adc1Buff;
+//	data1[0] = idx_A1;
+//
+//
+//	uint8_t* data2 = (uint8_t*)adc2Buff;
+//	data2[0] = idx_A2;
+//
+//
+//	uint8_t* data3 = (uint8_t*)adc3Buff;
+//	data3[0] = idx_A3;
+//
+//
+//	uint8_t* data4 = (uint8_t*)adc4Buff;
+//	data4[0] = idx_A4;
+//	__enable_irq();
+
+
+//	CDC_Transmit_FS(data1, BUFFER_SIZE*2);
+//	CDC_Transmit_FS(data2, BUFFER_SIZE*2);
+//	CDC_Transmit_FS(data3, BUFFER_SIZE*2);
+//	CDC_Transmit_FS(data4, BUFFER_SIZE*2);
 }
 
 void calcMagnitude(void) {

@@ -21,6 +21,23 @@ class USB():
         self.ser.flush()
         mags = self.parseLine(line)
         return mags  
+    
+    def readXBuff(self,size=32,num=5):
+        raw_data = self.ser.read(size*2*num)
+        line = list(struct.unpack(f'<{size*num}H', raw_data))
+        buffers = []
+        print(line)
+        for i in range(num):
+            buff = line[size*i:size*i+size]
+            # print(i, i+size)
+            buffers.append(buff)
+            # print(buff)
+            # self.getAmp(buff)
+        print('NEXT')
+        # self.ser.flush()
+        self.ser.reset_input_buffer()
+        return buffers
+         
 
     def readBuffer(self, size=128):
         raw_data = self.ser.read(size*2)
@@ -157,11 +174,12 @@ class dataReader():
 
     def reading(self):
         while True:
-            self.usb.readBuffer()
-            
+            data = self.usb.readXBuff()
+            self.dataQueue.put(data)
+
             # line = self.usb.readUSB()
-            # print(line)
-            self.dataQueue.put(self.usb.parseLine(self.usb.data)*3.3/(2**12*50))
+            # self.dataQueue.put(line*3.3/(2**12*50))
+
 
 
 
@@ -175,7 +193,7 @@ import matplotlib.animation as Anim
 # usb = USB('COM14',9600)
 # usb.connect()
 
-reader = dataReader('COM14',9600)
+reader = dataReader('COM14',115200)
 # while True:
 #     pass
 
@@ -185,14 +203,17 @@ def show(mag):
     axes.cla()
     # axes.set_ylim(0.01)
     axes.grid(True)
-    axes.plot(mag)
+    # axes.plot(mag[-1])
+    for data in mag:
+        axes.plot(data[1:],label=f'{data[0]}')
+    axes.legend()
     plt.pause(0.01)
 
 while True:
     data = reader.dataQueue.get()
-    print(len(data))
-    show(data)
-    time.sleep(1)
+    # print(len(data))
+    # show(data)
+    # time.sleep(1)
 
 # while True:
 #     pass
